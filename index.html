@@ -27,26 +27,60 @@
             outline-offset: 1px;
         }
         /* Ensure modal is centered and visible */
-        #settings-modal.flex {
+        .modal.flex { /* Used for settings and confirmation modals */
             display: flex;
         }
-        #settings-modal.hidden {
+        .modal.hidden {
             display: none;
         }
-        /* Smooth transition for modal */
-        #settings-modal-content {
+        /* Smooth transition for modal content */
+        .modal-content {
             transition: transform 0.3s ease-out, opacity 0.3s ease-out;
         }
         /* Chat bubble max width */
         .chat-bubble {
-            max-width: 75%; /* Adjust as needed */
-            word-wrap: break-word; /* Ensure long words don't overflow */
+            max-width: 85%; /* Increased slightly */
+            word-wrap: break-word; 
         }
         /* Ensure header stays on top */
         header {
             position: sticky;
             top: 0;
             z-index: 50;
+        }
+        /* Styling for copy icon */
+        .copy-icon {
+            cursor: pointer;
+            opacity: 0.6;
+            transition: opacity 0.2s ease-in-out;
+        }
+        .copy-icon:hover {
+            opacity: 1;
+        }
+        /* Styling for rendered markdown code blocks */
+        pre {
+            background-color: #2d3748; /* Tailwind gray-800 */
+            color: #e2e8f0; /* Tailwind gray-200 */
+            padding: 1em;
+            border-radius: 0.5em;
+            overflow-x: auto;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9em;
+            margin-top: 0.5em;
+            margin-bottom: 0.5em;
+        }
+        pre code {
+            background-color: transparent;
+            color: inherit;
+            padding: 0;
+        }
+        /* Styling for inline code */
+        code:not(pre > code) {
+            background-color: #e2e8f0; /* Tailwind gray-200 */
+            color: #2d3748; /* Tailwind gray-800 */
+            padding: 0.2em 0.4em;
+            border-radius: 0.3em;
+            font-size: 0.9em;
         }
     </style>
 </head>
@@ -55,17 +89,24 @@
         <header class="bg-white shadow-md">
             <div class="max-w-3xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
                 <h1 class="text-xl sm:text-2xl font-bold text-gray-800">Gemini Chatbot</h1>
-                <button id="settings-btn" title="Settings" class="text-gray-600 hover:text-blue-600 focus:outline-none p-2 rounded-md focus:ring-2 focus:ring-blue-500 focus:ring-offset-1">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.646.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 1.905c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.333.184-.582.496-.646.87l-.212 1.282c-.09.542-.56.94-1.11.94h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.759 6.759 0 010-1.905c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.184.582-.496.644-.87l.214-1.282z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                </button>
+                <div class="flex items-center space-x-2">
+                    <button id="clear-chat-btn" title="Clear Chat" class="text-gray-600 hover:text-red-600 focus:outline-none p-2 rounded-md focus:ring-2 focus:ring-red-500 focus:ring-offset-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9.75L14.25 12m0 0L12 14.25m2.25-2.25L14.25 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zM14.25 7.5l-4.5 9" />
+                        </svg>
+                    </button>
+                    <button id="settings-btn" title="Settings" class="text-gray-600 hover:text-blue-600 focus:outline-none p-2 rounded-md focus:ring-2 focus:ring-blue-500 focus:ring-offset-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.646.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 1.905c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.333.184-.582.496-.646.87l-.212 1.282c-.09.542-.56.94-1.11.94h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.759 6.759 0 010-1.905c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.184.582-.496.644-.87l.214-1.282z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </button>
+                </div>
             </div>
         </header>
 
         <main class="flex-1 flex flex-col py-6 px-4 sm:px-6 lg:px-8 max-w-3xl w-full mx-auto">
-            <div id="chat-history" class="bg-white shadow-inner overflow-y-auto flex-1 p-4 rounded-lg mb-4" style="height: calc(100vh - 220px);">
+            <div id="chat-history" class="bg-white shadow-inner overflow-y-auto flex-1 p-4 rounded-lg mb-4" style="height: calc(100vh - 230px);">
                 </div>
              <div id="loading-indicator" class="hidden self-center my-2 text-gray-600 items-center">
                 <svg class="animate-spin h-5 w-5 text-blue-600 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -74,7 +115,7 @@
                 </svg>
                 <span>Thinking...</span>
             </div>
-            <div class="mt-auto flex gap-2 items-center">
+            <div id="copy-feedback" class="self-center text-sm text-green-600 mb-2 h-5"></div> <div class="mt-auto flex gap-2 items-center">
                 <input id="message-input" type="text" class="flex-1 border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm" placeholder="Type your message...">
                 <button id="send-btn" class="bg-blue-600 text-white px-5 py-3 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 shadow-sm disabled:opacity-60 disabled:cursor-not-allowed">
                     Send
@@ -82,8 +123,8 @@
             </div>
         </main>
 
-        <div id="settings-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden items-center justify-center z-[100] p-4">
-            <div class="bg-white p-6 sm:p-8 rounded-xl shadow-2xl w-full max-w-md transform scale-95 opacity-0" id="settings-modal-content">
+        <div id="settings-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 hidden items-center justify-center z-[100] p-4">
+            <div class="modal-content bg-white p-6 sm:p-8 rounded-xl shadow-2xl w-full max-w-md transform scale-95 opacity-0" id="settings-modal-content">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-xl sm:text-2xl font-semibold text-gray-800">Settings</h2>
                     <button id="close-settings-btn" title="Close settings" class="text-gray-500 hover:text-gray-700 p-1 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -107,14 +148,26 @@
                 <button id="save-settings-btn" class="w-full bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 shadow-md">Save Settings</button>
             </div>
         </div>
+
+        <div id="confirm-clear-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 hidden items-center justify-center z-[100] p-4">
+            <div class="modal-content bg-white p-6 sm:p-8 rounded-xl shadow-2xl w-full max-w-sm transform scale-95 opacity-0">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">Confirm Clear Chat</h2>
+                <p class="text-gray-600 mb-6">Are you sure you want to clear the entire chat history? This action cannot be undone.</p>
+                <div class="flex justify-end space-x-3">
+                    <button id="cancel-clear-btn" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400">Cancel</button>
+                    <button id="confirm-clear-action-btn" class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1">Clear Chat</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script type="module">
         // DOM element references
-        const chatHistoryDisplay = document.getElementById('chat-history'); // Renamed for clarity
+        const chatHistoryDisplay = document.getElementById('chat-history');
         const messageInput = document.getElementById('message-input');
         const sendBtn = document.getElementById('send-btn');
         const settingsBtn = document.getElementById('settings-btn');
+        const clearChatBtn = document.getElementById('clear-chat-btn');
         const settingsModal = document.getElementById('settings-modal');
         const settingsModalContent = document.getElementById('settings-modal-content');
         const apiKeyInput = document.getElementById('api-key-input');
@@ -122,23 +175,84 @@
         const saveSettingsBtn = document.getElementById('save-settings-btn');
         const closeSettingsBtn = document.getElementById('close-settings-btn');
         const loadingIndicator = document.getElementById('loading-indicator');
+        const copyFeedback = document.getElementById('copy-feedback');
+
+        const confirmClearModal = document.getElementById('confirm-clear-modal');
+        const confirmClearModalContent = confirmClearModal.querySelector('.modal-content');
+        const cancelClearBtn = document.getElementById('cancel-clear-btn');
+        const confirmClearActionBtn = document.getElementById('confirm-clear-action-btn');
 
         // Application state from localStorage
         let apiKey = localStorage.getItem('geminiApiKey') || '';
-        // Default to the first model in the new list
         let selectedModel = localStorage.getItem('geminiSelectedModel') || 'gemini-2.5-flash-preview-05-20'; 
         
-        // In-memory conversation history for API context
         let conversationHistoryForAPI = [];
-        const MAX_CONVERSATION_HISTORY = 10; // Max messages (5 turns) to keep in context
+        const MAX_CONVERSATION_HISTORY = 10; 
+
+        // --- Utility Functions ---
+        function escapeHtml(unsafe) {
+            return unsafe
+                 .replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+        }
+
+        function basicMarkdownToHtml(text) {
+            let html = escapeHtml(text);
+            // Bold: **text** or __text__
+            html = html.replace(/\*\*(.*?)\*\*|__(.*?)__/g, '<strong>$1$2</strong>');
+            // Italics: *text* or _text_
+            html = html.replace(/\*(.*?)\*|_(.*?)_/g, '<em>$1$2</em>');
+            // Strikethrough: ~~text~~
+            html = html.replace(/~~(.*?)~~/g, '<del>$1</del>');
+            // Inline code: `code`
+            html = html.replace(/`([^`]+?)`/g, '<code>$1</code>');
+            // Code blocks: ```lang\ncode\n``` or ```\ncode\n```
+            html = html.replace(/```(\w*)\n([\s\S]*?)\n```/g, (match, lang, code) => {
+                return `<pre><code class="language-${lang || 'plaintext'}">${code.trim()}</code></pre>`;
+            });
+             // Basic Unordered Lists: - item or * item or + item
+            html = html.replace(/^(\s*)[-*+]\s+(.*)/gm, (match, indent, item) => {
+                return `${indent}<li>${item}</li>`;
+            });
+            html = html.replace(/((?:^\s*<li>.*<\/li>\n?)+)/gm, '<ul>\n$1</ul>\n');
+            // Basic Ordered Lists: 1. item
+            html = html.replace(/^(\s*)\d+\.\s+(.*)/gm, (match, indent, item) => {
+                return `${indent}<li>${item}</li>`;
+            });
+            html = html.replace(/((?:^\s*<li>.*<\/li>\n?)+)/gm, (match, p1, offset, string) => {
+                // Check if previous line is also a list item, if not, wrap with <ol>
+                const prevChar = string.charAt(offset-1);
+                const nextChar = string.charAt(offset+match.length);
+                 if(!string.substring(0,offset).trim().endsWith('</ol>') && !string.substring(0,offset).trim().endsWith('</ul>')) {
+                    return '<ol>\n' + match + '</ol>\n';
+                 }
+                 return match;
+            });
+            // Clean up potential multiple wraps if lists are adjacent
+            html = html.replace(/<\/ul>\n<ul>/g, '');
+            html = html.replace(/<\/ol>\n<ol>/g, '');
+
+            return html.replace(/\n/g, '<br>'); // Convert newlines to <br> after other processing
+        }
+
 
         // Function to display a message in the chat history
         function displayMessage(sender, text, isError = false) {
             const messageWrapper = document.createElement('div');
-            messageWrapper.classList.add('flex', 'mb-3');
+            messageWrapper.classList.add('flex', 'mb-3', 'items-start', 'group'); // group for copy icon visibility
 
             const messageDiv = document.createElement('div');
-            messageDiv.classList.add('p-3', 'rounded-xl', 'chat-bubble');
+            messageDiv.classList.add('p-3', 'rounded-xl', 'chat-bubble', 'relative');
+            
+            // Apply Markdown rendering for bot messages (not errors)
+            if (sender === 'bot' && !isError) {
+                messageDiv.innerHTML = basicMarkdownToHtml(text);
+            } else {
+                messageDiv.textContent = text; // Keep user messages and errors as plain text
+            }
 
             if (isError) {
                 messageDiv.classList.add('bg-red-100', 'text-red-700', 'border', 'border-red-300');
@@ -149,31 +263,56 @@
             } else { // bot
                 messageWrapper.classList.add('justify-start'); 
                 messageDiv.classList.add('bg-gray-200', 'text-gray-800');
+                
+                // Add copy icon for bot messages
+                const copyBtn = document.createElement('button');
+                copyBtn.title = 'Copy message';
+                copyBtn.classList.add('copy-icon', 'absolute', '-top-1', '-right-1', 'p-1', 'text-gray-500', 'hover:text-blue-600', 'opacity-0', 'group-hover:opacity-100', 'transition-opacity', 'duration-200');
+                copyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.393-.03.79-.03 1.184 0 1.13.094 1.976 1.057 1.976 2.192V7.5m-9 3c0-1.135.845-2.098 1.976-2.192a48.424 48.424 0 011.184 0c1.13.094 1.976 1.057 1.976 2.192v1.292c0 1.135-.845 2.098-1.976 2.192a48.424 48.424 0 01-1.184 0c-1.13-.094-1.976-1.057-1.976-2.192V10.5zM9 13.5h6m-6 3h6m-6-3h.008v.008H9v-.008zm0 3h.008v.008H9v-.008zm0-3.008h.008v.008H9v-.008z" /></svg>`;
+                copyBtn.addEventListener('click', (e) => {
+                    e.stopPropagation(); 
+                    try {
+                        // Use the original plain text for copying
+                        const textToCopy = text; 
+                        // Fallback for navigator.clipboard.writeText
+                        const textArea = document.createElement("textarea");
+                        textArea.value = textToCopy;
+                        // Make the textarea out of viewport
+                        textArea.style.position = "fixed";
+                        textArea.style.left = "-9999px";
+                        textArea.style.top = "-9999px";
+                        document.body.appendChild(textArea);
+                        textArea.focus();
+                        textArea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textArea);
+                        copyFeedback.textContent = 'Copied!';
+                        setTimeout(() => { copyFeedback.textContent = ''; }, 2000);
+                    } catch (err) {
+                        console.error('Failed to copy using execCommand: ', err);
+                        copyFeedback.textContent = 'Copy failed!';
+                        setTimeout(() => { copyFeedback.textContent = ''; }, 2000);
+                    }
+                });
+                messageDiv.appendChild(copyBtn);
             }
-            
-            messageDiv.textContent = text;
             
             messageWrapper.appendChild(messageDiv);
             chatHistoryDisplay.appendChild(messageWrapper);
             chatHistoryDisplay.scrollTo({ top: chatHistoryDisplay.scrollHeight, behavior: 'smooth' });
         }
 
-        // Async function to send a message to the Gemini API
         async function sendMessage() {
             const messageText = messageInput.value.trim();
-            if (!messageText) {
-                return; 
-            }
+            if (!messageText) return;
             if (!apiKey) {
                 displayMessage('bot', 'API Key is missing. Please set your API key in Settings.', true);
-                openSettingsModal();
+                openModal(settingsModal, settingsModalContent);
                 return;
             }
 
             displayMessage('user', messageText);
-            // Add user message to API conversation history
             conversationHistoryForAPI.push({ role: "user", parts: [{ text: messageText }] });
-            // Trim history if it's too long
             if (conversationHistoryForAPI.length > MAX_CONVERSATION_HISTORY) {
                 conversationHistoryForAPI = conversationHistoryForAPI.slice(-MAX_CONVERSATION_HISTORY);
             }
@@ -182,14 +321,12 @@
             sendBtn.disabled = true; 
             loadingIndicator.classList.remove('hidden');
             loadingIndicator.classList.add('flex');
-
+            copyFeedback.textContent = ''; // Clear any previous copy feedback
 
             const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`;
-            
             const payload = {
-                contents: conversationHistoryForAPI, // Send the entire conversation history
-                // Optional: Add safetySettings or generationConfig if needed
-                 safetySettings: [ // Example safety settings (adjust as needed)
+                contents: conversationHistoryForAPI,
+                 safetySettings: [
                    { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
                    { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
                    { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
@@ -200,9 +337,7 @@
             try {
                 const response = await fetch(API_URL, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
 
@@ -212,7 +347,6 @@
                     if (errorData && errorData.error && errorData.error.message) {
                         errorMsg += ` - ${errorData.error.message}`;
                     }
-                    console.error('API Error Details:', errorData);
                     throw new Error(errorMsg);
                 }
 
@@ -230,31 +364,22 @@
                     if(data.promptFeedback.safetyRatings) {
                        safetyInfo += data.promptFeedback.safetyRatings.map(r => `${r.category.replace('HARM_CATEGORY_', '')}: ${r.probability}`).join(', ');
                     }
-                    const blockMessage = `Your request was blocked. Reason: ${blockReason}. ${safetyInfo}`;
-                    displayMessage('bot', blockMessage, true);
-                    botReply = blockMessage; // Store this as the "bot reply" for history
+                    botReply = `Your request was blocked. Reason: ${blockReason}. ${safetyInfo}`;
+                    displayMessage('bot', botReply, true);
                 } else {
-                    console.error('Unexpected API response structure:', data);
-                    const unexpectedMessage = 'Received an unexpected response format from the API. Check console for details.';
-                    displayMessage('bot', unexpectedMessage, true);
-                    botReply = unexpectedMessage; // Store this as the "bot reply"
+                    botReply = 'Received an unexpected response format from the API. Check console for details.';
+                    displayMessage('bot', botReply, true);
                 }
 
-                // Add model's response (or error/block message) to API conversation history
-                if (botReply !== null) { // Ensure there's something to add
+                if (botReply !== null) {
                     conversationHistoryForAPI.push({ role: "model", parts: [{ text: botReply }] });
-                     // Trim history again after adding bot's response
                     if (conversationHistoryForAPI.length > MAX_CONVERSATION_HISTORY) {
                         conversationHistoryForAPI = conversationHistoryForAPI.slice(-MAX_CONVERSATION_HISTORY);
                     }
                 }
-
-
             } catch (error) {
-                console.error('Error sending message:', error);
                 const errorMessage = `Error: ${error.message}`;
                 displayMessage('bot', errorMessage, true);
-                // Add error to conversation history as a model response
                 conversationHistoryForAPI.push({ role: "model", parts: [{ text: errorMessage }] });
                 if (conversationHistoryForAPI.length > MAX_CONVERSATION_HISTORY) {
                     conversationHistoryForAPI = conversationHistoryForAPI.slice(-MAX_CONVERSATION_HISTORY);
@@ -276,81 +401,101 @@
             }
         });
 
-        // --- Settings Modal Logic ---
-        function openSettingsModal() {
-            settingsModal.classList.remove('hidden');
-            settingsModal.classList.add('flex');
-            apiKeyInput.value = apiKey; 
-            modelSelect.value = selectedModel;
+        // --- Modal Generic Functions ---
+        function openModal(modalElement, modalContentElement) {
+            modalElement.classList.remove('hidden');
+            modalElement.classList.add('flex');
+            // Animate modal appearance
             setTimeout(() => {
-                settingsModalContent.classList.remove('scale-95', 'opacity-0');
-                settingsModalContent.classList.add('scale-100', 'opacity-100');
-            }, 10); 
-            apiKeyInput.focus();
+                modalContentElement.classList.remove('scale-95', 'opacity-0');
+                modalContentElement.classList.add('scale-100', 'opacity-100');
+            }, 10);
+            // Focus first focusable element in modal if exists
+            const focusable = modalContentElement.querySelector('input, select, button');
+            if (focusable) focusable.focus();
         }
 
-        function closeSettingsModal() {
-            settingsModalContent.classList.remove('scale-100', 'opacity-100');
-            settingsModalContent.classList.add('scale-95', 'opacity-0');
+        function closeModal(modalElement, modalContentElement) {
+            modalContentElement.classList.remove('scale-100', 'opacity-100');
+            modalContentElement.classList.add('scale-95', 'opacity-0');
             setTimeout(() => {
-                settingsModal.classList.add('hidden');
-                settingsModal.classList.remove('flex');
+                modalElement.classList.add('hidden');
+                modalElement.classList.remove('flex');
             }, 300); 
         }
-
-        settingsBtn.addEventListener('click', openSettingsModal);
-        closeSettingsBtn.addEventListener('click', closeSettingsModal);
-
+        
+        // --- Settings Modal Specific Logic ---
+        settingsBtn.addEventListener('click', () => {
+            apiKeyInput.value = apiKey; 
+            modelSelect.value = selectedModel;
+            openModal(settingsModal, settingsModalContent);
+        });
+        closeSettingsBtn.addEventListener('click', () => closeModal(settingsModal, settingsModalContent));
         saveSettingsBtn.addEventListener('click', () => {
             const newApiKey = apiKeyInput.value.trim();
             const newModel = modelSelect.value;
-
             if (!newApiKey) {
-                // Display error in chat instead of alert
                 displayMessage('bot', "API Key cannot be empty. Please set it in Settings.", true);
                 apiKeyInput.focus();
                 return;
             }
-
             apiKey = newApiKey;
             selectedModel = newModel;
             localStorage.setItem('geminiApiKey', apiKey);
             localStorage.setItem('geminiSelectedModel', selectedModel);
-            closeSettingsModal();
-            displayMessage('bot', 'Settings saved successfully. New model selected: ' + selectedModel);
-            // Clear conversation history when settings (especially model) change, for a fresh start
+            closeModal(settingsModal, settingsModalContent);
+            displayMessage('bot', 'Settings saved. New model: ' + selectedModel + '. Chat history cleared.');
             conversationHistoryForAPI = []; 
-            displayMessage('bot', 'Conversation history has been cleared due to settings change.');
+            chatHistoryDisplay.innerHTML = ''; // Clear visual history too
+            displayMessage('bot', `Switched to ${selectedModel}. Previous chat cleared.`);
+        });
+        settingsModal.addEventListener('click', (e) => {
+            if (e.target === settingsModal) closeModal(settingsModal, settingsModalContent);
         });
 
-        settingsModal.addEventListener('click', (e) => {
-            if (e.target === settingsModal) { 
-                closeSettingsModal();
-            }
+        // --- Clear Chat Confirmation Modal Logic ---
+        clearChatBtn.addEventListener('click', () => {
+            openModal(confirmClearModal, confirmClearModalContent);
+        });
+        cancelClearBtn.addEventListener('click', () => closeModal(confirmClearModal, confirmClearModalContent));
+        confirmClearActionBtn.addEventListener('click', () => {
+            chatHistoryDisplay.innerHTML = ''; // Clear visual chat
+            conversationHistoryForAPI = []; // Clear API context
+            closeModal(confirmClearModal, confirmClearModalContent);
+            displayMessage('bot', 'Chat history cleared.');
+            messageInput.focus();
+        });
+        confirmClearModal.addEventListener('click', (e) => {
+            if (e.target === confirmClearModal) closeModal(confirmClearModal, confirmClearModalContent);
         });
         
+        // --- Global Keydown Listener for Modals ---
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && settingsModal.classList.contains('flex')) {
-                closeSettingsModal();
+            if (e.key === 'Escape') {
+                if (settingsModal.classList.contains('flex')) {
+                    closeModal(settingsModal, settingsModalContent);
+                }
+                if (confirmClearModal.classList.contains('flex')) {
+                    closeModal(confirmClearModal, confirmClearModalContent);
+                }
             }
         });
 
         // --- Initial Setup on Page Load ---
         function initializeApp() {
             apiKeyInput.value = apiKey;
-            modelSelect.value = selectedModel; // Ensure correct model is pre-selected in dropdown
+            modelSelect.value = selectedModel; 
 
             if (!apiKey) {
-                displayMessage('bot', "Welcome! Please configure your Gemini API key in Settings to start chatting.");
-                openSettingsModal();
+                displayMessage('bot', "Welcome! Configure your Gemini API key in Settings to start.");
+                openModal(settingsModal, settingsModalContent);
             } else {
-                displayMessage('bot', `Welcome back! Using model: ${selectedModel}. Type your message below.`);
+                displayMessage('bot', `Welcome back! Model: ${selectedModel}.`);
             }
             messageInput.focus();
         }
 
         document.addEventListener('DOMContentLoaded', initializeApp);
-
     </script>
 </body>
 </html>
