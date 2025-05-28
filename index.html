@@ -27,9 +27,36 @@
         .log-entry.error { color: red; }
         .log-entry.info { color: blue; }
         .log-entry.warn { color: orange; }
-        .message-actions button { opacity: 0; transition: opacity 0.2s ease-in-out; }
-        .group:hover .message-actions button { opacity: 0.7; }
-        .message-actions button:hover { opacity: 1; }
+        
+        /* Styling for message action buttons */
+        .message-wrapper { /* New wrapper for message bubble and its actions */
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 0.75rem; /* Replaces mb-3 on old messageWrapper */
+        }
+        .message-wrapper.user {
+            align-items: flex-end;
+        }
+        .message-wrapper.model {
+            align-items: flex-start;
+        }
+        .message-actions {
+            display: flex;
+            gap: 0.25rem; /* gap-1 */
+            margin-top: 0.25rem; /* mt-1 */
+        }
+        .message-actions button { 
+            opacity: 0; 
+            transition: opacity 0.2s ease-in-out;
+            padding: 0.125rem; /* p-0.5 */
+        }
+        .message-wrapper:hover .message-actions button { /* Show on wrapper hover */
+            opacity: 0.6; 
+        }
+        .message-actions button:hover { 
+            opacity: 1; 
+        }
+
     </style>
 </head>
 <body class="font-sans bg-gray-100">
@@ -98,12 +125,13 @@
         </div>
 
         <div id="confirm-clear-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 hidden items-center justify-center z-[101] p-4">
-            <div class="modal-content bg-white p-6 sm:p-8 rounded-xl shadow-2xl w-full max-w-sm transform scale-95 opacity-0">
-                <h2 class="text-lg font-semibold text-gray-800 mb-4">Confirm New Chat</h2>
-                <p class="text-gray-600 mb-6">Are you sure you want to start a new chat? The current conversation will be cleared.</p>
-                <div class="flex justify-end space-x-3">
-                    <button id="cancel-clear-btn" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
-                    <button id="confirm-clear-action-btn" class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700">Clear & New</button>
+            <div class="modal-content bg-white p-6 sm:p-8 rounded-xl shadow-2xl w-full max-w-md transform scale-95 opacity-0">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">New Chat Options</h2>
+                <p class="text-gray-600 mb-6">How would you like to start a new chat?</p>
+                <div class="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
+                    <button id="cancel-clear-btn" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 w-full sm:w-auto">Cancel</button>
+                    <button id="confirm-clear-action-btn" class="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 w-full sm:w-auto">Clear & New</button>
+                    <button id="save-new-btn" class="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 w-full sm:w-auto">Save & New</button>
                 </div>
             </div>
         </div>
@@ -161,6 +189,7 @@
         const confirmClearModalContent = confirmClearModal.querySelector('.modal-content');
         const cancelClearBtn = document.getElementById('cancel-clear-btn');
         const confirmClearActionBtn = document.getElementById('confirm-clear-action-btn');
+        const saveNewBtn = document.getElementById('save-new-btn'); // New button
 
         // Logs Modal
         const logsModal = document.getElementById('logs-modal');
@@ -176,19 +205,17 @@
         const editMessageTextarea = document.getElementById('edit-message-textarea');
         const cancelEditBtn = document.getElementById('cancel-edit-btn');
         const saveEditBtn = document.getElementById('save-edit-btn');
-        let editingMessageIndex = -1; // To store the index of the message being edited
+        let editingMessageIndex = -1; 
 
         // --- Application State ---
         let apiKey = '';
-        let selectedModel = 'gemini-1.5-pro-latest'; // Default to multimodal
+        let selectedModel = 'gemini-1.5-pro-latest'; 
         let customInstructions = '';
-        let conversation = []; // Stores {id, role, text, imageBase64, imageMimeType, isError}
+        let conversation = []; 
         let appLogs = [];
         let currentAttachedImage = { base64: null, mimeType: null, name: null };
-        const MAX_CONVERSATION_HISTORY_API = 10; // For API context (pairs of user/model)
+        const MAX_CONVERSATION_HISTORY_API = 10; 
 
-        // --- Logging ---
-        // Save original console methods before overriding
         const originalConsoleLog = console.log;
         const originalConsoleError = console.error;
         const originalConsoleWarn = console.warn;
@@ -197,15 +224,14 @@
             const timestamp = new Date().toLocaleTimeString();
             const message = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg).join(' ');
             appLogs.push({ timestamp, type, message });
-            if (appLogs.length > 200) appLogs.shift(); // Keep logs manageable
+            if (appLogs.length > 200) appLogs.shift(); 
 
             const logEntryDiv = document.createElement('div');
             logEntryDiv.classList.add('log-entry', type);
             logEntryDiv.innerHTML = `<strong>[${timestamp}] [${type.toUpperCase()}]</strong>: ${escapeHtml(message).replace(/\n/g, '<br>')}`;
-            logOutputArea.appendChild(logEntryDiv);
-            logOutputArea.scrollTop = logOutputArea.scrollHeight;
+            if(logOutputArea) logOutputArea.appendChild(logEntryDiv); // Check if logOutputArea exists
+            if(logOutputArea) logOutputArea.scrollTop = logOutputArea.scrollHeight;
 
-            // Also log to actual console for dev, using the original methods
             switch(type) {
                 case 'error': originalConsoleError.apply(console, args); break;
                 case 'warn': originalConsoleWarn.apply(console, args); break;
@@ -213,13 +239,10 @@
             }
         }
         
-        // Override console methods to use appLog, which then uses original console methods
         console.log = (...args) => { appLog('info', ...args); };
         console.error = (...args) => { appLog('error', ...args); };
         console.warn = (...args) => { appLog('warn', ...args); };
 
-
-        // --- Utility Functions ---
         function escapeHtml(unsafe) {
             return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
         }
@@ -244,11 +267,10 @@
 
         function generateMessageId() { return Date.now().toString(36) + Math.random().toString(36).substring(2); }
 
-        // --- Display & UI Functions ---
-        function displayMessageInChat(msg) { // msg: {id, role, text, imageBase64, isError}
-            const messageWrapper = document.createElement('div');
-            messageWrapper.classList.add('flex', 'mb-3', 'items-start', 'group', 'relative');
-            messageWrapper.dataset.messageId = msg.id;
+        function displayMessageInChat(msg) {
+            const outerWrapper = document.createElement('div'); // New outer wrapper
+            outerWrapper.classList.add('message-wrapper', msg.role === 'user' ? 'user' : 'model');
+            outerWrapper.dataset.messageId = msg.id;
 
             const messageDiv = document.createElement('div');
             messageDiv.classList.add('p-3', 'rounded-xl', 'chat-bubble');
@@ -268,31 +290,23 @@
                 textElement.textContent = msg.text || '';
             }
             messageDiv.appendChild(textElement);
+            outerWrapper.appendChild(messageDiv); // Message bubble added to outer wrapper
 
             const actionsContainer = document.createElement('div');
-            actionsContainer.classList.add('message-actions', 'absolute', 'flex', 'gap-1', 'p-0.5', 'rounded-md', 'bg-gray-100', 'bg-opacity-80', 'shadow-sm');
+            actionsContainer.classList.add('message-actions'); // Styling handled by CSS
             
             if (msg.role === 'user') {
-                messageWrapper.classList.add('justify-end');
                 messageDiv.classList.add('bg-blue-600', 'text-white');
-                actionsContainer.style.bottom = '-10px';
-                actionsContainer.style.right = '5px';
-
                 const editBtn = createActionButton('Edit', 'M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125', () => openEditModal(msg.id));
                 actionsContainer.appendChild(editBtn);
-
-            } else { // model or error
-                messageWrapper.classList.add('justify-start');
-                actionsContainer.style.bottom = '-10px';
-                actionsContainer.style.left = '5px';
+            } else { 
                 if (msg.isError) {
                     messageDiv.classList.add('bg-red-100', 'text-red-700', 'border', 'border-red-300');
                 } else {
                     messageDiv.classList.add('bg-gray-200', 'text-gray-800');
-                    const copyBtn = createActionButton('Copy', 'M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.393-.03.79-.03 1.184 0 1.13.094 1.976 1.057 1.976 2.192V7.5m-9 3c0-1.135.845-2.098 1.976-2.192a48.424 48.424 0 011.184 0c1.13.094 1.976 1.057 1.976 2.192v1.292c0 1.135-.845 2.098-1.976 2.192a48.424 48.424 0 01-1.184 0c-1.13-.094-1.976-1.057-1.976-2.192V10.5zM9 13.5h6m-6 3h6m-6-3h.008v.008H9v-.008zm0 3h.008v.008H9v-.008zm0-3.008h.008v.008H9v-.008z', () => copyToClipboard(msg.text));
+                    const copyBtn = createActionButton('Copy', 'M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.393-.03.79-.03 1.184 0 1.13.094 1.976 1.057 1.976 2.192V7.5m-9 3c0-1.135.845-2.098 1.976-2.192a48.424 48.424 0 011.184 0c1.13.094 1.976 1.057 1.976 2.192v1.292c0 1.135-.845 2.098-1.976 2.192a48.424 48.424 0 01-1.184 0c-1.13-.094-1.976-1.057-1.976-2.192V10.5zM9 13.5h6m-6 3h6m-6-3h.008v.008H9v-.008zm0 3h.008v.008H9v-.008zm0-3.008h.008v.008H9v-.008z', () => copyToClipboard(msg.text || ''));
                     actionsContainer.appendChild(copyBtn);
                     
-                    // Add regenerate button only for the very last model message and if it's not an error
                     const lastMessageInChat = conversation[conversation.length -1];
                     if (lastMessageInChat && lastMessageInChat.id === msg.id && !msg.isError) {
                          const regenerateBtn = createActionButton('Regenerate', 'M16.023 9.348h4.992v-.001a.75.75 0 01.75.75c0 .414-.336.75-.75.75h-4.992v5.052c0 .83-.672 1.5-1.5 1.5s-1.5-.67-1.5-1.5v-5.052H4.477c-.83 0-1.5-.672-1.5-1.5s.672-1.5 1.5-1.5h8.496V4.296c0-.83.672-1.5 1.5-1.5s1.5.672 1.5 1.5v5.052z', regenerateLastAIResponse);
@@ -301,18 +315,18 @@
                 }
             }
             
-            messageWrapper.appendChild(messageDiv);
-            if (actionsContainer.hasChildNodes()) { // Only append if there are actions
-                messageWrapper.appendChild(actionsContainer);
+            if (actionsContainer.hasChildNodes()) { 
+                outerWrapper.appendChild(actionsContainer); // Actions added to outer wrapper
             }
-            chatHistoryDisplay.appendChild(messageWrapper);
+            chatHistoryDisplay.appendChild(outerWrapper);
             chatHistoryDisplay.scrollTo({ top: chatHistoryDisplay.scrollHeight, behavior: 'smooth' });
         }
         
         function createActionButton(title, svgPathD, onClickAction) {
             const button = document.createElement('button');
             button.title = title;
-            button.classList.add('control-icon', 'p-1', 'rounded', 'hover:bg-gray-300');
+            // Removed control-icon class, direct styling via .message-actions button in CSS
+            button.classList.add('p-1', 'rounded', 'hover:bg-gray-300'); 
             button.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-3.5 h-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="${svgPathD}" /></svg>`;
             button.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -326,7 +340,6 @@
             conversation.forEach(msg => displayMessageInChat(msg));
         }
 
-        // --- Image Handling ---
         imageUploadInput.addEventListener('change', (event) => {
             const file = event.target.files[0];
             if (file) {
@@ -339,7 +352,7 @@
                 };
                 reader.readAsDataURL(file);
             }
-            imageUploadInput.value = ''; // Reset file input
+            imageUploadInput.value = '';
         });
 
         function renderImagePreview() {
@@ -364,7 +377,6 @@
             }
         }
 
-        // --- API Interaction ---
         async function sendMessageToAPI() {
             const messageText = messageInput.value.trim();
             if (!messageText && !currentAttachedImage.base64) return;
@@ -377,9 +389,9 @@
             const userMessageId = generateMessageId();
             addMessageToConversation('user', messageText, currentAttachedImage.base64, currentAttachedImage.mimeType, false, userMessageId);
             
-            const tempImageBase64 = currentAttachedImage.base64; // Store before clearing
+            const tempImageBase64 = currentAttachedImage.base64; 
             const tempImageMimeType = currentAttachedImage.mimeType;
-            currentAttachedImage = { base64: null, mimeType: null, name: null }; // Clear after adding to conversation
+            currentAttachedImage = { base64: null, mimeType: null, name: null }; 
             renderImagePreview();
             messageInput.value = '';
             sendBtn.disabled = true;
@@ -387,7 +399,6 @@
             loadingIndicator.classList.add('flex');
             copyFeedback.textContent = '';
 
-            // Prepare API payload
             let apiConversationHistory = [];
             if (customInstructions) {
                  apiConversationHistory.push({ role: "user", parts: [{ text: `System Instructions: ${customInstructions}` }] });
@@ -414,25 +425,18 @@
             }
             
             const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${effectiveModel}:generateContent?key=${apiKey}`;
-            const payload = { contents: apiConversationHistory, safetySettings: [ /* ... your safety settings ... */ ] };
+            const payload = { contents: apiConversationHistory, safetySettings: [ /* ... */ ] };
 
             try {
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+                const response = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                 const data = await response.json();
-
                 if (!response.ok) {
                     let errorMsg = `API request failed: ${response.status}`;
                     if (data && data.error && data.error.message) errorMsg += ` - ${data.error.message}`;
                     throw new Error(errorMsg);
                 }
-                
                 let botReplyText = 'No valid response from API.';
                 let isErrorResponse = true;
-
                 if (data.candidates && data.candidates.length > 0 && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts.length > 0) {
                     botReplyText = data.candidates[0].content.parts[0].text;
                     isErrorResponse = false;
@@ -441,7 +445,6 @@
                     if(data.promptFeedback.safetyRatings) botReplyText += ` Ratings: ${data.promptFeedback.safetyRatings.map(r => `${r.category.replace('HARM_CATEGORY_', '')}: ${r.probability}`).join(', ')}`;
                 }
                 addMessageToConversation('model', botReplyText, null, null, isErrorResponse);
-
             } catch (error) {
                 console.error('Error sending message:', error);
                 addMessageToConversation('model', `Error: ${error.message}`, null, null, true);
@@ -460,26 +463,17 @@
                 console.warn("Not enough history to regenerate.");
                 return;
             }
-
             let lastUserMessageIndex = -1;
             for (let i = conversation.length - 1; i >= 0; i--) {
-                if (conversation[i].role === 'user') {
-                    lastUserMessageIndex = i;
-                    break;
-                }
+                if (conversation[i].role === 'user') { lastUserMessageIndex = i; break; }
             }
-
-            if (lastUserMessageIndex === -1) {
-                console.warn("No user message found to regenerate from.");
-                return;
-            }
+            if (lastUserMessageIndex === -1) { console.warn("No user message found to regenerate from."); return; }
 
             conversation = conversation.slice(0, lastUserMessageIndex + 1);
             renderFullChatHistory(); 
             
             sendBtn.disabled = true;
-            loadingIndicator.classList.remove('hidden');
-            loadingIndicator.classList.add('flex');
+            loadingIndicator.classList.remove('hidden'); loadingIndicator.classList.add('flex');
             copyFeedback.textContent = '';
 
             let apiConversationHistory = [];
@@ -487,17 +481,13 @@
                  apiConversationHistory.push({ role: "user", parts: [{ text: `System Instructions: ${customInstructions}` }] });
                  apiConversationHistory.push({ role: "model", parts: [{ text: "Understood." }] });
             }
-            const recentMessagesForApi = conversation
-                .slice(-MAX_CONVERSATION_HISTORY_API * 2)
+            const recentMessagesForApi = conversation.slice(-MAX_CONVERSATION_HISTORY_API * 2)
                 .map(msg => {
                     const parts = [];
                     if (msg.text) parts.push({ text: msg.text });
-                    if (msg.imageBase64 && msg.role === 'user') {
-                        parts.push({ inlineData: { mimeType: msg.imageMimeType, data: msg.imageBase64.split(',')[1] } });
-                    }
+                    if (msg.imageBase64 && msg.role === 'user') parts.push({ inlineData: { mimeType: msg.imageMimeType, data: msg.imageBase64.split(',')[1] } });
                     return { role: msg.role === 'model' ? 'model' : 'user', parts };
-                })
-                .filter(msg => msg.parts.length > 0);
+                }).filter(msg => msg.parts.length > 0);
             apiConversationHistory = [...apiConversationHistory, ...recentMessagesForApi];
             
             const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`;
@@ -507,7 +497,6 @@
                 const response = await fetch(API_URL, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
                 const data = await response.json();
                 if (!response.ok) { throw new Error(data.error?.message || `API Error ${response.status}`); }
-
                 let botReplyText = 'No valid response from API.';
                 let isErrorResponse = true;
                 if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
@@ -517,21 +506,17 @@
                     botReplyText = `Request blocked. Reason: ${data.promptFeedback.blockReason}.`;
                 }
                 addMessageToConversation('model', botReplyText, null, null, isErrorResponse);
-
             } catch (error) {
                 console.error('Error regenerating response:', error);
                 addMessageToConversation('model', `Error regenerating: ${error.message}`, null, null, true);
             } finally {
                 sendBtn.disabled = false;
-                loadingIndicator.classList.add('hidden');
-                loadingIndicator.classList.remove('flex');
+                loadingIndicator.classList.add('hidden'); loadingIndicator.classList.remove('flex');
                 messageInput.focus();
                 saveChatState();
             }
         }
 
-
-        // --- Edit Message Logic ---
         function openEditModal(messageId) {
             editingMessageIndex = conversation.findIndex(msg => msg.id === messageId);
             if (editingMessageIndex === -1 || conversation[editingMessageIndex].role !== 'user') {
@@ -544,14 +529,9 @@
 
         saveEditBtn.addEventListener('click', () => {
             if (editingMessageIndex === -1) return;
-            
             const newText = editMessageTextarea.value.trim();
             const originalMessage = conversation[editingMessageIndex];
-
-            if (newText === originalMessage.text) { 
-                closeModal(editMessageModal, editMessageModalContent);
-                return;
-            }
+            if (newText === originalMessage.text) { closeModal(editMessageModal, editMessageModalContent); return; }
 
             conversation = conversation.slice(0, editingMessageIndex);
             const editedMessageId = generateMessageId();
@@ -559,8 +539,7 @@
             closeModal(editMessageModal, editMessageModalContent);
             
             sendBtn.disabled = true;
-            loadingIndicator.classList.remove('hidden');
-            loadingIndicator.classList.add('flex');
+            loadingIndicator.classList.remove('hidden'); loadingIndicator.classList.add('flex');
             copyFeedback.textContent = '';
 
             let apiConversationHistory = [];
@@ -568,17 +547,13 @@
                  apiConversationHistory.push({ role: "user", parts: [{ text: `System Instructions: ${customInstructions}` }] });
                  apiConversationHistory.push({ role: "model", parts: [{ text: "Understood." }] });
             }
-            const recentMessagesForApi = conversation
-                .slice(-MAX_CONVERSATION_HISTORY_API * 2)
+            const recentMessagesForApi = conversation.slice(-MAX_CONVERSATION_HISTORY_API * 2)
                 .map(msg => {
                     const parts = [];
                     if (msg.text) parts.push({ text: msg.text });
-                    if (msg.imageBase64 && msg.role === 'user') {
-                        parts.push({ inlineData: { mimeType: msg.imageMimeType, data: msg.imageBase64.split(',')[1] } });
-                    }
+                    if (msg.imageBase64 && msg.role === 'user') parts.push({ inlineData: { mimeType: msg.imageMimeType, data: msg.imageBase64.split(',')[1] } });
                     return { role: msg.role === 'model' ? 'model' : 'user', parts };
-                })
-                .filter(msg => msg.parts.length > 0);
+                }).filter(msg => msg.parts.length > 0);
             apiConversationHistory = [...apiConversationHistory, ...recentMessagesForApi];
             
             const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`;
@@ -608,28 +583,22 @@
                 })
                 .finally(() => {
                     sendBtn.disabled = false;
-                    loadingIndicator.classList.add('hidden');
-                    loadingIndicator.classList.remove('flex');
+                    loadingIndicator.classList.add('hidden'); loadingIndicator.classList.remove('flex');
                     messageInput.focus();
                     saveChatState();
                 });
-            
             editingMessageIndex = -1;
         });
         cancelEditBtn.addEventListener('click', () => closeModal(editMessageModal, editMessageModalContent));
 
-
-        // --- Conversation Management ---
         function addMessageToConversation(role, text, imageBase64 = null, imageMimeType = null, isError = false, id = null) {
             const messageId = id || generateMessageId();
             const message = { id: messageId, role, text, imageBase64, imageMimeType, isError };
             conversation.push(message);
-            // displayMessageInChat(message); // Display immediately -- This was causing issues with renderFullChatHistory
-            renderFullChatHistory(); // Re-render to update action buttons (like regenerate on new last AI msg)
+            renderFullChatHistory(); 
             return messageId;
         }
 
-        // --- Local Storage ---
         function saveChatState() {
             try {
                 const state = { apiKey, selectedModel, customInstructions, conversation };
@@ -657,11 +626,9 @@
             }
         }
         
-        // --- Event Listeners ---
         sendBtn.addEventListener('click', sendMessageToAPI);
         messageInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessageToAPI(); } });
 
-        // Modals Generic Open/Close
         function openModal(modalElement, modalContentElement) {
             modalElement.classList.remove('hidden'); modalElement.classList.add('flex');
             setTimeout(() => { modalContentElement.classList.remove('scale-95', 'opacity-0'); modalContentElement.classList.add('scale-100', 'opacity-100'); }, 10);
@@ -673,7 +640,6 @@
             setTimeout(() => { modalElement.classList.add('hidden'); modalElement.classList.remove('flex'); }, 300);
         }
 
-        // Settings Modal
         settingsBtn.addEventListener('click', () => {
             apiKeyInput.value = apiKey;
             modelSelect.value = selectedModel;
@@ -693,22 +659,49 @@
         });
         settingsModal.addEventListener('click', (e) => { if (e.target === settingsModal) closeModal(settingsModal, settingsModalContent); });
 
-        // Clear Chat Modal
         clearChatBtn.addEventListener('click', () => openModal(confirmClearModal, confirmClearModalContent));
         cancelClearBtn.addEventListener('click', () => closeModal(confirmClearModal, confirmClearModalContent));
-        confirmClearActionBtn.addEventListener('click', () => {
+        
+        function clearCurrentChatUIAndState() {
             conversation = [];
             chatHistoryDisplay.innerHTML = '';
             currentAttachedImage = { base64: null, mimeType: null, name: null };
             renderImagePreview();
             saveChatState(); 
-            closeModal(confirmClearModal, confirmClearModalContent);
             addMessageToConversation('model', 'New chat started.', null, null, false);
             messageInput.focus();
+        }
+
+        confirmClearActionBtn.addEventListener('click', () => {
+            clearCurrentChatUIAndState();
+            closeModal(confirmClearModal, confirmClearModalContent);
         });
+
+        saveNewBtn.addEventListener('click', () => {
+            if (conversation.length > 0) {
+                try {
+                    let archivedChats = JSON.parse(localStorage.getItem('geminiArchivedChats') || '[]');
+                    const chatToSave = {
+                        id: Date.now().toString(),
+                        name: `Chat ${new Date().toLocaleString()}`,
+                        conversation: [...conversation], // Save a copy
+                        customInstructions, // Save custom instructions with the chat
+                        model: selectedModel, // Save model with the chat
+                        timestamp: new Date().toISOString()
+                    };
+                    archivedChats.push(chatToSave);
+                    localStorage.setItem('geminiArchivedChats', JSON.stringify(archivedChats));
+                    console.info(`Chat (ID: ${chatToSave.id}) archived successfully. Total archived: ${archivedChats.length}`);
+                } catch (e) {
+                    console.error("Failed to archive chat:", e);
+                }
+            }
+            clearCurrentChatUIAndState();
+            closeModal(confirmClearModal, confirmClearModalContent);
+        });
+
         confirmClearModal.addEventListener('click', (e) => { if (e.target === confirmClearModal) closeModal(confirmClearModal, confirmClearModalContent); });
 
-        // Logs Modal
         viewLogsBtn.addEventListener('click', () => openModal(logsModal, logsModalContent));
         closeLogsBtn.addEventListener('click', () => closeModal(logsModal, logsModalContent));
         copyLogsBtn.addEventListener('click', () => {
@@ -717,7 +710,6 @@
         });
         logsModal.addEventListener('click', (e) => { if (e.target === logsModal) closeModal(logsModal, logsModalContent); });
 
-        // --- Clipboard ---
         function copyToClipboard(text, successMessage = "Copied!") {
             try {
                 const textArea = document.createElement("textarea");
@@ -729,24 +721,18 @@
                 document.body.removeChild(textArea);
                 copyFeedback.textContent = successMessage;
                 setTimeout(() => { copyFeedback.textContent = ''; }, 2000);
-                console.info(successMessage); // Use console.info to avoid appLog recursion if appLog itself calls copyToClipboard
+                originalConsoleLog.call(console, successMessage); // Use original to avoid appLog recursion
             } catch (err) {
-                console.error('Failed to copy: ', err);
+                originalConsoleError.call(console, 'Failed to copy: ', err); // Use original
                 copyFeedback.textContent = 'Copy failed!';
                 setTimeout(() => { copyFeedback.textContent = ''; }, 2000);
             }
         }
         
-        // --- Testing Function ---
         runTestsBtn.addEventListener('click', async () => {
             console.info("--- Starting Basic Tests ---");
-            // Test 1: Settings Save/Load
             console.info("Test 1: Settings Save/Load");
-            const oldApiKey = apiKey;
-            const oldModel = selectedModel;
-            const oldInstructions = customInstructions;
-            const oldConversation = [...conversation];
-
+            const oldApiKey = apiKey; const oldModel = selectedModel; const oldInstructions = customInstructions; const oldConversation = [...conversation];
             localStorage.setItem('geminiAdvancedChatState', JSON.stringify({ apiKey: 'test-key', selectedModel: 'gemma-3n', customInstructions: 'test-instr', conversation: [{id:'test', role:'user', text:'hello'}] }));
             loadChatState();
             if (apiKey === 'test-key' && selectedModel === 'gemma-3n' && customInstructions === 'test-instr' && conversation.length === 1 && conversation[0].text === 'hello') {
@@ -754,19 +740,10 @@
             } else {
                 console.error("Test 1 FAILED: Settings did not load as expected.", {expectedKey: 'test-key', actualKey: apiKey});
             }
-            // Restore original state carefully
-            apiKey = oldApiKey;
-            selectedModel = oldModel;
-            customInstructions = oldInstructions;
-            conversation = oldConversation;
-            saveChatState(); // Save restored state
-            // Reflect restored state in UI inputs
-            apiKeyInput.value = apiKey;
-            modelSelect.value = selectedModel;
-            customInstructionsInput.value = customInstructions;
+            apiKey = oldApiKey; selectedModel = oldModel; customInstructions = oldInstructions; conversation = oldConversation;
+            saveChatState(); 
+            apiKeyInput.value = apiKey; modelSelect.value = selectedModel; customInstructionsInput.value = customInstructions;
 
-
-            // Test 2: API Connectivity (Simple text prompt)
             console.info("Test 2: API Connectivity (Simple Text Prompt)");
             if (!apiKey) {
                 console.warn("Test 2 SKIPPED: API Key not set.");
@@ -778,7 +755,7 @@
                     const response = await fetch(testApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(testPayload) });
                     const data = await response.json();
                     if (response.ok && data.candidates && data.candidates[0].content.parts[0].text.includes("Test OK")) {
-                        console.info("Test 2 PASSED: API responded successfully to text prompt. Response: " + data.candidates[0].content.parts[0].text);
+                        console.info("Test 2 PASSED: API responded successfully. Response: " + data.candidates[0].content.parts[0].text);
                     } else {
                         console.error("Test 2 FAILED: API did not respond as expected.", data);
                     }
@@ -789,8 +766,6 @@
             console.info("--- Basic Tests Finished ---");
         });
 
-
-        // --- Global Keydown Listener for Modals ---
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 if (settingsModal.classList.contains('flex')) closeModal(settingsModal, settingsModalContent);
@@ -800,11 +775,8 @@
             }
         });
 
-        // --- Initial Setup ---
         function initializeApp() {
-            // Initial call to appLog should be fine here as original console methods are not yet overridden by appLog's internal calls.
-            originalConsoleLog.call(console, "Initializing Chat Application..."); // Use original directly for first log
-            
+            originalConsoleLog.call(console, "Initializing Chat Application..."); 
             loadChatState();
             apiKeyInput.value = apiKey;
             modelSelect.value = selectedModel;
@@ -820,11 +792,10 @@
                 }
             }
             messageInput.focus();
-            console.info("Application Initialized."); // This will now use the overridden console.info -> appLog
+            console.info("Application Initialized."); 
         }
 
         document.addEventListener('DOMContentLoaded', initializeApp);
     </script>
 </body>
 </html>
-
