@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Chatbot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for webkit browsers */
+        #chat-history::-webkit-scrollbar {
+            width: 8px;
+        }
+        #chat-history::-webkit-scrollbar-track {
+            background: #f7fafc; /* Tailwind gray-100 */
+            border-radius: 10px;
+        }
+        #chat-history::-webkit-scrollbar-thumb {
+            background: #a0aec0; /* Tailwind gray-400 */
+            border-radius: 10px;
+        }
+        #chat-history::-webkit-scrollbar-thumb:hover {
+            background: #718096; /* Tailwind gray-500 */
+        }
+        /* Basic styling for focus states to ensure visibility */
+        input:focus, select:focus, button:focus {
+            outline: 2px solid #2563eb; /* Tailwind blue-600 */
+            outline-offset: 1px;
+        }
+        /* Ensure modal is centered and visible */
+        #settings-modal.flex {
+            display: flex;
+        }
+        #settings-modal.hidden {
+            display: none;
+        }
+        /* Smooth transition for modal */
+        #settings-modal-content {
+            transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+        }
+        /* Chat bubble max width */
+        .chat-bubble {
+            max-width: 75%; /* Adjust as needed */
+            word-wrap: break-word; /* Ensure long words don't overflow */
+        }
+        /* Ensure header stays on top */
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+    </style>
+</head>
+<body class="font-sans bg-gray-100">
+    <div class="min-h-screen flex flex-col">
+        <header class="bg-white shadow-md">
+            <div class="max-w-3xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+                <h1 class="text-xl sm:text-2xl font-bold text-gray-800">Gemini Chatbot</h1>
+                <button id="settings-btn" title="Settings" class="text-gray-600 hover:text-blue-600 focus:outline-none p-2 rounded-md focus:ring-2 focus:ring-blue-500 focus:ring-offset-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.646.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 1.905c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.333.184-.582.496-.646.87l-.212 1.282c-.09.542-.56.94-1.11.94h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.759 6.759 0 010-1.905c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.184.582-.496.644-.87l.214-1.282z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <main class="flex-1 flex flex-col py-6 px-4 sm:px-6 lg:px-8 max-w-3xl w-full mx-auto">
+            <div id="chat-history" class="bg-white shadow-inner overflow-y-auto flex-1 p-4 rounded-lg mb-4" style="height: calc(100vh - 220px);">
+                </div>
+             <div id="loading-indicator" class="hidden self-center my-2 text-gray-600 items-center">
+                <svg class="animate-spin h-5 w-5 text-blue-600 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Thinking...</span>
+            </div>
+            <div class="mt-auto flex gap-2 items-center">
+                <input id="message-input" type="text" class="flex-1 border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm" placeholder="Type your message...">
+                <button id="send-btn" class="bg-blue-600 text-white px-5 py-3 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 shadow-sm disabled:opacity-60 disabled:cursor-not-allowed">
+                    Send
+                </button>
+            </div>
+        </main>
+
+        <div id="settings-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden items-center justify-center z-[100] p-4">
+            <div class="bg-white p-6 sm:p-8 rounded-xl shadow-2xl w-full max-w-md transform scale-95 opacity-0" id="settings-modal-content">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl sm:text-2xl font-semibold text-gray-800">Settings</h2>
+                    <button id="close-settings-btn" title="Close settings" class="text-gray-500 hover:text-gray-700 p-1 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <label for="api-key-input" class="block mb-2 text-sm font-medium text-gray-700">Gemini API Key:</label>
+                <input id="api-key-input" type="password" class="w-full border border-gray-300 p-3 rounded-lg mb-5 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm" placeholder="Enter your Gemini API key">
+                
+                <label for="model-select" class="block mb-2 text-sm font-medium text-gray-700">Model:</label>
+                <select id="model-select" class="w-full border border-gray-300 p-3 rounded-lg mb-8 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm bg-white appearance-none">
+                    <option value="gemini-2.5-flash-preview-05-20">Gemini 2.5 Flash Preview 05-20</option>
+                    <option value="gemini-2.5-pro-experimental-03-25">Gemini 2.5 Pro Experimental 03-25</option>
+                    <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash-Lite</option>
+                    <option value="gemma-3n">Gemma 3n</option>
+                    <option value="gemma-3n-27b">Gemma 3n 27b</option>
+                </select>
+                
+                <button id="save-settings-btn" class="w-full bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 shadow-md">Save Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // DOM element references
+        const chatHistoryDisplay = document.getElementById('chat-history'); // Renamed for clarity
+        const messageInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
+        const settingsBtn = document.getElementById('settings-btn');
+        const settingsModal = document.getElementById('settings-modal');
+        const settingsModalContent = document.getElementById('settings-modal-content');
+        const apiKeyInput = document.getElementById('api-key-input');
+        const modelSelect = document.getElementById('model-select');
+        const saveSettingsBtn = document.getElementById('save-settings-btn');
+        const closeSettingsBtn = document.getElementById('close-settings-btn');
+        const loadingIndicator = document.getElementById('loading-indicator');
+
+        // Application state from localStorage
+        let apiKey = localStorage.getItem('geminiApiKey') || '';
+        // Default to the first model in the new list
+        let selectedModel = localStorage.getItem('geminiSelectedModel') || 'gemini-2.5-flash-preview-05-20'; 
+        
+        // In-memory conversation history for API context
+        let conversationHistoryForAPI = [];
+        const MAX_CONVERSATION_HISTORY = 10; // Max messages (5 turns) to keep in context
+
+        // Function to display a message in the chat history
+        function displayMessage(sender, text, isError = false) {
+            const messageWrapper = document.createElement('div');
+            messageWrapper.classList.add('flex', 'mb-3');
+
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('p-3', 'rounded-xl', 'chat-bubble');
+
+            if (isError) {
+                messageDiv.classList.add('bg-red-100', 'text-red-700', 'border', 'border-red-300');
+                messageWrapper.classList.add('justify-start'); 
+            } else if (sender === 'user') {
+                messageWrapper.classList.add('justify-end'); 
+                messageDiv.classList.add('bg-blue-600', 'text-white');
+            } else { // bot
+                messageWrapper.classList.add('justify-start'); 
+                messageDiv.classList.add('bg-gray-200', 'text-gray-800');
+            }
+            
+            messageDiv.textContent = text;
+            
+            messageWrapper.appendChild(messageDiv);
+            chatHistoryDisplay.appendChild(messageWrapper);
+            chatHistoryDisplay.scrollTo({ top: chatHistoryDisplay.scrollHeight, behavior: 'smooth' });
+        }
+
+        // Async function to send a message to the Gemini API
+        async function sendMessage() {
+            const messageText = messageInput.value.trim();
+            if (!messageText) {
+                return; 
+            }
+            if (!apiKey) {
+                displayMessage('bot', 'API Key is missing. Please set your API key in Settings.', true);
+                openSettingsModal();
+                return;
+            }
+
+            displayMessage('user', messageText);
+            // Add user message to API conversation history
+            conversationHistoryForAPI.push({ role: "user", parts: [{ text: messageText }] });
+            // Trim history if it's too long
+            if (conversationHistoryForAPI.length > MAX_CONVERSATION_HISTORY) {
+                conversationHistoryForAPI = conversationHistoryForAPI.slice(-MAX_CONVERSATION_HISTORY);
+            }
+
+            messageInput.value = ''; 
+            sendBtn.disabled = true; 
+            loadingIndicator.classList.remove('hidden');
+            loadingIndicator.classList.add('flex');
+
+
+            const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`;
+            
+            const payload = {
+                contents: conversationHistoryForAPI, // Send the entire conversation history
+                // Optional: Add safetySettings or generationConfig if needed
+                 safetySettings: [ // Example safety settings (adjust as needed)
+                   { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+                   { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+                   { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+                   { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+                 ],
+            };
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => null); 
+                    let errorMsg = `API request failed: ${response.status}`;
+                    if (errorData && errorData.error && errorData.error.message) {
+                        errorMsg += ` - ${errorData.error.message}`;
+                    }
+                    console.error('API Error Details:', errorData);
+                    throw new Error(errorMsg);
+                }
+
+                const data = await response.json();
+                let botReply = null;
+                
+                if (data.candidates && data.candidates.length > 0 &&
+                    data.candidates[0].content && data.candidates[0].content.parts &&
+                    data.candidates[0].content.parts.length > 0) {
+                    botReply = data.candidates[0].content.parts[0].text;
+                    displayMessage('bot', botReply);
+                } else if (data.promptFeedback && data.promptFeedback.blockReason) {
+                    const blockReason = data.promptFeedback.blockReason;
+                    let safetyInfo = "Safety ratings: ";
+                    if(data.promptFeedback.safetyRatings) {
+                       safetyInfo += data.promptFeedback.safetyRatings.map(r => `${r.category.replace('HARM_CATEGORY_', '')}: ${r.probability}`).join(', ');
+                    }
+                    const blockMessage = `Your request was blocked. Reason: ${blockReason}. ${safetyInfo}`;
+                    displayMessage('bot', blockMessage, true);
+                    botReply = blockMessage; // Store this as the "bot reply" for history
+                } else {
+                    console.error('Unexpected API response structure:', data);
+                    const unexpectedMessage = 'Received an unexpected response format from the API. Check console for details.';
+                    displayMessage('bot', unexpectedMessage, true);
+                    botReply = unexpectedMessage; // Store this as the "bot reply"
+                }
+
+                // Add model's response (or error/block message) to API conversation history
+                if (botReply !== null) { // Ensure there's something to add
+                    conversationHistoryForAPI.push({ role: "model", parts: [{ text: botReply }] });
+                     // Trim history again after adding bot's response
+                    if (conversationHistoryForAPI.length > MAX_CONVERSATION_HISTORY) {
+                        conversationHistoryForAPI = conversationHistoryForAPI.slice(-MAX_CONVERSATION_HISTORY);
+                    }
+                }
+
+
+            } catch (error) {
+                console.error('Error sending message:', error);
+                const errorMessage = `Error: ${error.message}`;
+                displayMessage('bot', errorMessage, true);
+                // Add error to conversation history as a model response
+                conversationHistoryForAPI.push({ role: "model", parts: [{ text: errorMessage }] });
+                if (conversationHistoryForAPI.length > MAX_CONVERSATION_HISTORY) {
+                    conversationHistoryForAPI = conversationHistoryForAPI.slice(-MAX_CONVERSATION_HISTORY);
+                }
+            } finally {
+                sendBtn.disabled = false; 
+                loadingIndicator.classList.add('hidden');
+                loadingIndicator.classList.remove('flex');
+                messageInput.focus(); 
+            }
+        }
+
+        // --- Event Listeners ---
+        sendBtn.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) { 
+                e.preventDefault(); 
+                sendMessage();
+            }
+        });
+
+        // --- Settings Modal Logic ---
+        function openSettingsModal() {
+            settingsModal.classList.remove('hidden');
+            settingsModal.classList.add('flex');
+            apiKeyInput.value = apiKey; 
+            modelSelect.value = selectedModel;
+            setTimeout(() => {
+                settingsModalContent.classList.remove('scale-95', 'opacity-0');
+                settingsModalContent.classList.add('scale-100', 'opacity-100');
+            }, 10); 
+            apiKeyInput.focus();
+        }
+
+        function closeSettingsModal() {
+            settingsModalContent.classList.remove('scale-100', 'opacity-100');
+            settingsModalContent.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                settingsModal.classList.add('hidden');
+                settingsModal.classList.remove('flex');
+            }, 300); 
+        }
+
+        settingsBtn.addEventListener('click', openSettingsModal);
+        closeSettingsBtn.addEventListener('click', closeSettingsModal);
+
+        saveSettingsBtn.addEventListener('click', () => {
+            const newApiKey = apiKeyInput.value.trim();
+            const newModel = modelSelect.value;
+
+            if (!newApiKey) {
+                // Display error in chat instead of alert
+                displayMessage('bot', "API Key cannot be empty. Please set it in Settings.", true);
+                apiKeyInput.focus();
+                return;
+            }
+
+            apiKey = newApiKey;
+            selectedModel = newModel;
+            localStorage.setItem('geminiApiKey', apiKey);
+            localStorage.setItem('geminiSelectedModel', selectedModel);
+            closeSettingsModal();
+            displayMessage('bot', 'Settings saved successfully. New model selected: ' + selectedModel);
+            // Clear conversation history when settings (especially model) change, for a fresh start
+            conversationHistoryForAPI = []; 
+            displayMessage('bot', 'Conversation history has been cleared due to settings change.');
+        });
+
+        settingsModal.addEventListener('click', (e) => {
+            if (e.target === settingsModal) { 
+                closeSettingsModal();
+            }
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && settingsModal.classList.contains('flex')) {
+                closeSettingsModal();
+            }
+        });
+
+        // --- Initial Setup on Page Load ---
+        function initializeApp() {
+            apiKeyInput.value = apiKey;
+            modelSelect.value = selectedModel; // Ensure correct model is pre-selected in dropdown
+
+            if (!apiKey) {
+                displayMessage('bot', "Welcome! Please configure your Gemini API key in Settings to start chatting.");
+                openSettingsModal();
+            } else {
+                displayMessage('bot', `Welcome back! Using model: ${selectedModel}. Type your message below.`);
+            }
+            messageInput.focus();
+        }
+
+        document.addEventListener('DOMContentLoaded', initializeApp);
+
+    </script>
+</body>
+</html>
