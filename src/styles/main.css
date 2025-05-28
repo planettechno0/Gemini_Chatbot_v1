@@ -1,0 +1,22 @@
+/* Import base styles, variables, and component styles */
+@import url('_base.css');
+@import url('_variables.css');
+/* Component styles will be imported by each component or here later */
+@import url('components/_header.css');
+@import url('components/_chat.css');
+@import url('components/_input.css');
+@import url('components/_modals.css');
+@import url('components/_buttons.css');
+
+/* Add any global styles that don't fit elsewhere, if necessary */
+body {
+    font-family: sans-serif; /* Example, will be overridden by _base.css */
+    margin: 0;
+    background-color: #f0f0f0; /* Example */
+}
+
+#app {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
